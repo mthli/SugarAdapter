@@ -20,9 +20,7 @@ apply plugin: 'java'
 targetCompatibility = '1.8'
 sourceCompatibility = '1.8'
 
-def ext = rootProject.ext
-
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    compileOnly "androidx.annotation:annotation:${ext.androidx}"
+    compileOnly "androidx.annotation:annotation:$projectAndroidX"
 }

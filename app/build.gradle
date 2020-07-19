@@ -1,4 +1,5 @@
 /*
+ * Copyright 2020 Matthew Lee
  * Copyright 2018 Zhihu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +16,18 @@
  */
 
 apply plugin: 'com.android.application'
-
-def ext = rootProject.ext
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 
 android {
-    compileSdkVersion ext.compileSdkVersion
-    buildToolsVersion ext.buildToolsVersion
+    buildToolsVersion projectBuildToolsVersion
+    compileSdkVersion projectCompileSdkVersion
 
     defaultConfig {
         applicationId 'com.zhihu.android.sugaradapterdemo'
-        minSdkVersion ext.minSdkVersion
-        targetSdkVersion ext.targetSdkVersion
+        minSdkVersion projectMinSdkVersion
+        targetSdkVersion projectTargetSdkVersion
         versionCode 1
         versionName '1.0.0'
 
@@ -52,13 +54,14 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(':library')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$projectKotlinVersion"
 
     // noinspection GradleDependency
-    implementation "androidx.appcompat:appcompat:${ext.androidx}"
+    implementation "androidx.appcompat:appcompat:$projectAndroidX"
 
     // SugarAdapter
     // implementation "com.zhihu.android:sugaradapter:${ext.sugaradapter}"
     // annotationProcessor "com.zhihu.android:sugaradapter-processor:${ext.sugaradapter}"
     implementation project(':sugaradapter')
-    annotationProcessor project(':sugaradapter-processor')
+    kapt project(':sugaradapter-processor')
 }

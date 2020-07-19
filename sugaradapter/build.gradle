@@ -16,15 +16,13 @@
 
 apply plugin: 'com.android.library'
 
-def ext = rootProject.ext
-
 android {
-    compileSdkVersion ext.compileSdkVersion
-    buildToolsVersion ext.buildToolsVersion
+    buildToolsVersion projectBuildToolsVersion
+    compileSdkVersion projectCompileSdkVersion
 
     defaultConfig {
-        minSdkVersion ext.minSdkVersion
-        targetSdkVersion ext.targetSdkVersion
+        minSdkVersion projectMinSdkVersion
+        targetSdkVersion projectTargetSdkVersion
         consumerProguardFiles 'proguard-rules.pro'
     }
 
@@ -44,5 +42,5 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     api project(':sugaradapter-annotation')
-    api "androidx.recyclerview:recyclerview:${ext.androidx}"
+    api "androidx.recyclerview:recyclerview:$projectAndroidX"
 }
