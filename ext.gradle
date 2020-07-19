@@ -15,11 +15,11 @@
  */
 
 ext {
-    compileSdkVersion = 28
-    buildToolsVersion = '28.0.3'
+    compileSdkVersion = 29
+    buildToolsVersion = '29.0.2'
     minSdkVersion = 14
-    targetSdkVersion = 28
+    targetSdkVersion = 29
 
-    androidx = '1.0.0'
+    androidx = '1.1.0'
     sugaradapter = '1.8.16'
 }

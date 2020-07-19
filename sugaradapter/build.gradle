@@ -15,7 +15,6 @@
  */
 
 apply plugin: 'com.android.library'
-apply plugin: 'com.novoda.bintray-release'
 
 def ext = rootProject.ext
 
@@ -46,14 +45,4 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     api project(':sugaradapter-annotation')
     api "androidx.recyclerview:recyclerview:${ext.androidx}"
-}
-
-// $ ./gradlew clean build bintrayUpload -PbintrayUser=BINTRAY_USERNAME -PbintrayKey=BINTRAY_KEY -PdryRun=false
-publish {
-    userOrg = 'zhihu'
-    groupId = 'com.zhihu.android'
-    artifactId = 'sugaradapter'
-    publishVersion = "${ext.sugaradapter}"
-    desc = 'Make RecyclerView.Adapter Great Again!'
-    website = 'https://github.com/zhihu/sugaradapter'
 }
