@@ -19,6 +19,7 @@ package com.zhihu.android.sugaradapterdemo;
 
 import android.os.Bundle;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,6 +30,7 @@ import androidx.lifecycle.OnLifecycleEvent;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.zhihu.android.sugaradapter.SugarAdapter;
 import com.zhihu.android.sugaradapter.SugarHolder;
 import com.zhihu.android.sugaradapterdemo.holder.BarHolder;
@@ -79,6 +81,7 @@ public final class MainActivity extends AppCompatActivity {
                         Log.e(TAG, "onBarHolderViewDetachedFromWindow -> " + barHolder.getData().getText());
                     }
                 }))
+                .preInflate(true)
                 .build();
         recyclerView.setAdapter(adapter);
 
