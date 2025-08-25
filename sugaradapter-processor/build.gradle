@@ -18,13 +18,14 @@ import com.android.build.gradle.internal.LoggerWrapper
 import com.android.build.gradle.internal.SdkHandler
 
 apply plugin: 'java'
-apply plugin: 'com.novoda.bintray-release'
+// apply plugin: 'com.novoda.bintray-release'
 
 // for plugin 'java'
 targetCompatibility = '1.8'
 sourceCompatibility = '1.8'
 
 // https://github.com/JakeWharton/butterknife/pull/380/
+/*
 def logger = new LoggerWrapper(project.logger)
 def sdkHandler = new SdkHandler(project, logger)
 for (File file : sdkHandler.sdkLoader.repositories) {
@@ -32,6 +33,7 @@ for (File file : sdkHandler.sdkLoader.repositories) {
         url = file.toURI()
     }
 }
+ */
 
 def ext = rootProject.ext
 
@@ -39,10 +41,11 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(':sugaradapter-annotation')
     implementation 'com.hendraanggrian:r-parser:0.2'
-    compileOnly "androidx.annotation:annotation:${ext.androidx}"
+    compileOnly "androidx.annotation:annotation:1.9.1"
 }
 
 // $ ./gradlew clean build bintrayUpload -PbintrayUser=BINTRAY_USERNAME -PbintrayKey=BINTRAY_KEY -PdryRun=false
+/*
 publish {
     userOrg = 'zhihu'
     groupId = 'com.zhihu.android'
@@ -51,3 +54,4 @@ publish {
     desc = 'SugarAdapter\'s annotation processor'
     website = 'https://github.com/zhihu/sugaradapter'
 }
+ */
