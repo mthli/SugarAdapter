@@ -1,5 +1,4 @@
 /*
- * Copyright 2020 Matthew Lee
  * Copyright 2018 Zhihu Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,30 +16,24 @@
 
 package com.zhihu.android.sugaradapter;
 
+import android.os.Looper;
+import android.os.MessageQueue;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
 import androidx.annotation.IntRange;
 import androidx.annotation.LayoutRes;
-import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.WorkerThread;
 import androidx.lifecycle.Lifecycle;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.lang.reflect.ParameterizedType;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.*;
 
-@SuppressWarnings({"rawtypes", "unused", "WeakerAccess"})
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
     private static final String TAG = "SugarAdapter";
 
@@ -102,9 +95,7 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
     }
 
     public interface PreInflateListener {
-        @WorkerThread
         void onPreInflateExecuted(@LayoutRes int layoutRes);
-        @MainThread
         void onPreInflateConsumed(@LayoutRes int layoutRes, boolean fallback);
     }
 
@@ -164,9 +155,8 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
     private List<PreInflateListener> mPreInflateListenerList;
     private List<SugarHolderListener<?>> mSugarHolderListenerList;
 
-    private SparseArray<AtomicReference<View>> mPreInflateArray;
-    private PreInflateThread mPreInflateThread;
-    private LayoutInflater mInflater;
+    private MessageQueue.IdleHandler mPreInflateHandler;
+    private SparseArray<View> mPreInflateArray;
 
     private SugarAdapter(@NonNull List<?> list, @NonNull SparseArray<Container> containerArray, boolean preInflate) {
         mList = list;
@@ -176,13 +166,13 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
         mPreInflateListenerList = new ArrayList<>();
         mSugarHolderListenerList = new ArrayList<>();
 
-        if (!preInflate) return;
-        mPreInflateArray = new SparseArray<>();
-
-        for (int i = 0; i < mContainerArray.size(); i++) {
-            int key = mContainerArray.keyAt(i);
-            Container container = mContainerArray.get(key);
-            mPreInflateArray.put(container.getLayoutRes(), null);
+        if (preInflate) {
+            mPreInflateArray = new SparseArray<>();
+            for (int i = 0; i < mContainerArray.size(); i++) {
+                int key = mContainerArray.keyAt(i);
+                Container container = mContainerArray.get(key);
+                mPreInflateArray.put(container.getLayoutRes(), null);
+            }
         }
     }
 
@@ -268,7 +258,6 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
         return this;
     }
 
-    @SuppressWarnings("UnusedReturnValue")
     @NonNull
     public SugarAdapter clearPreInflateListener() {
         mPreInflateListenerList.clear();
@@ -277,15 +266,10 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
 
     @NonNull
     public SugarAdapter clearPreInflateViews() {
-        clearPreInflateListener();
-
-        if (mPreInflateThread != null) {
-            mPreInflateThread.clear();
-            mPreInflateThread.interrupt();
-            mPreInflateThread = null;
+        if (mPreInflateArray != null) {
+            mPreInflateArray.clear();
         }
 
-        mPreInflateArray = null;
         return this;
     }
 
@@ -373,14 +357,10 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
             int layoutRes = container.getLayoutRes();
 
             if (mPreInflateArray != null) {
-                AtomicReference<View> viewRef = mPreInflateArray.get(layoutRes);
-                if (viewRef != null) {
-                    view = viewRef.getAndSet(null);
-                }
+                view = mPreInflateArray.get(layoutRes);
 
-                if (mPreInflateThread != null) {
-                    mPreInflateThread.inflate(layoutRes);
-                }
+                // preInflate the layoutRes when next MainThread idle in case for needed
+                mPreInflateArray.put(layoutRes, null);
 
                 for (PreInflateListener listener : mPreInflateListenerList) {
                     if (listener != null) {
@@ -390,10 +370,7 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
             }
 
             if (view == null) {
-                if (mInflater == null) {
-                    mInflater = LayoutInflater.from(parent.getContext());
-                }
-                view = mInflater.inflate(layoutRes, parent, false);
+                view = inflateView(layoutRes, parent);
             }
 
             SugarHolder holder = container.getHolderClass().getDeclaredConstructor(View.class).newInstance(view);
@@ -417,6 +394,11 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
             Log.e(TAG, "onCreateViewHolder failed, holder: " + container.getHolderClass().getCanonicalName());
             throw new RuntimeException(e);
         }
+    }
+
+    @NonNull
+    private View inflateView(@LayoutRes int layoutRes, @NonNull ViewGroup parent) {
+        return LayoutInflater.from(parent.getContext()).inflate(layoutRes, parent, false);
     }
 
     @Override
@@ -474,29 +456,49 @@ public final class SugarAdapter extends RecyclerView.Adapter<SugarHolder> {
 
     @Override
     public void onAttachedToRecyclerView(@NonNull RecyclerView view) {
+        // preInflate XML when MainThread idle
+        if (mPreInflateArray != null && mPreInflateHandler == null) {
+            mPreInflateHandler = () -> {
+                for (int i = 0; i < mPreInflateArray.size(); i++) {
+                    int layoutRes = mPreInflateArray.keyAt(i);
+                    if (mPreInflateArray.get(layoutRes) == null) {
+                        mPreInflateArray.put(layoutRes, inflateView(layoutRes, view));
+
+                        for (PreInflateListener listener : mPreInflateListenerList) {
+                            if (listener != null) {
+                                listener.onPreInflateExecuted(layoutRes);
+                            }
+                        }
+
+                        // only one at a time, avoid blocking MainThread
+                        break;
+                    }
+                }
+
+                return true;
+            };
+
+            Looper.myQueue().addIdleHandler(mPreInflateHandler);
+        }
+
         for (ExtraDelegate delegate : mExtraDelegateList) {
             if (delegate != null) {
                 delegate.onAttachedToRecyclerView(view);
             }
         }
-
-        if (mPreInflateThread == null && mPreInflateArray != null) {
-            mPreInflateThread = new PreInflateThread(view, mPreInflateArray, mPreInflateListenerList);
-            mPreInflateThread.start();
-        }
     }
 
     @Override
     public void onDetachedFromRecyclerView(@NonNull RecyclerView view) {
+        if (mPreInflateHandler != null) {
+            Looper.myQueue().removeIdleHandler(mPreInflateHandler);
+            mPreInflateHandler = null;
+        }
+
         for (ExtraDelegate delegate : mExtraDelegateList) {
             if (delegate != null) {
                 delegate.onDetachedFromRecyclerView(view);
             }
-        }
-
-        if (mPreInflateThread != null) {
-            mPreInflateThread.interrupt();
-            mPreInflateThread = null;
         }
     }
 
